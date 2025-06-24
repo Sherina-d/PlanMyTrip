@@ -4,21 +4,21 @@ from crewai import Agent, Task, Crew, LLM
 import datetime
 from dotenv import load_dotenv
 
-# Load environment variables
+
 load_dotenv()
 
-# Configure the page
+
 st.set_page_config(
-    page_title="🌍 Multi-Agent AI Travel Planner",
+    page_title="🌍 PlanMyTrip",
     page_icon="✈️",
     layout="wide"
 )
 
-# Title
-st.title("🌍 Multi-Agent AI Travel Planner")
-st.markdown("**🧠 Powered by 5 Specialized AI Agents**")
 
-# Get API key from environment variable
+st.title("🌍 PlanMyTrip")
+st.markdown("**🧠 Powered by AI Agents**")
+
+
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 if gemini_api_key:
@@ -38,27 +38,27 @@ if gemini_api_key:
         end_date = st.date_input("End Date")
         budget_type = st.selectbox("Budget Type", ["budget", "moderate", "luxury"])
 
-    # Calculate trip duration
+   
     if start_date and end_date:
         trip_duration = (end_date - start_date).days
         st.info(f"Trip Duration: {trip_duration} days")
 
-    # Generate plan button
+  
     if st.button("🚀 Generate Multi-Agent Travel Plan", type="primary"):
         if from_city and destination and interests and trip_duration > 0:
 
-            # Show progress with agent status
+           
             with st.spinner("🤖 Multi-Agent system is working..."):
 
                 try:
-                    # Set up Gemini LLM
+                 
                     gemini_llm = LLM(
                         model="gemini/gemini-2.0-flash-exp",
                         api_key=gemini_api_key,
                         temperature=0.3
                     )
 
-                    # 🚆 TransportAgent
+                
                     transport_agent = Agent(
                         role="Transportation Specialist",
                         goal=f"Find all transportation options from {from_city} to {destination}",
@@ -68,7 +68,7 @@ if gemini_api_key:
                         allow_delegation=False
                     )
 
-                    # 🏨 StayAgent  
+                 
                     stay_agent = Agent(
                         role="Accommodation Specialist",
                         goal=f"Find 5-6 accommodation options in {destination} for {budget_type} travelers",
@@ -78,7 +78,7 @@ if gemini_api_key:
                         allow_delegation=False
                     )
 
-                    # 📅 ItineraryAgent
+                  
                     itinerary_agent = Agent(
                         role="Itinerary Planning Specialist", 
                         goal=f"Create detailed day-wise itinerary for {trip_duration} days in {destination}",
@@ -88,7 +88,7 @@ if gemini_api_key:
                         allow_delegation=False
                     )
 
-                    # 💸 BudgetTrackerAgent
+                    
                     budget_agent = Agent(
                         role="Budget Analysis Specialist",
                         goal=f"Calculate total trip cost estimation for {budget_type} travel",
@@ -98,7 +98,7 @@ if gemini_api_key:
                         allow_delegation=False
                     )
 
-                    # 🔄 CoordinatorAgent
+                   
                     coordinator_agent = Agent(
                         role="Travel Plan Coordinator",
                         goal="Merge all agent outputs into one clean, readable final travel plan",
@@ -108,9 +108,8 @@ if gemini_api_key:
                         allow_delegation=False
                     )
 
-                    # Create Tasks for each agent
+                
 
-                    # 🚆 Transport Task
                     transport_task = Task(
                         description=f"""
                         Research transportation options from {from_city} to {destination}.
@@ -147,7 +146,6 @@ if gemini_api_key:
                         agent=transport_agent
                     )
 
-                    # 🏨 Stay Task
                     stay_task = Task(
                         description=f"""
                         Find 5-6 accommodation options in {destination} for {budget_type} travelers.
@@ -176,7 +174,7 @@ if gemini_api_key:
                         agent=stay_agent
                     )
 
-                    # 📅 Itinerary Task
+
                     itinerary_task = Task(
                         description=f"""
                         Create a {trip_duration}-day detailed itinerary for {destination}.
@@ -201,7 +199,7 @@ if gemini_api_key:
                         agent=itinerary_agent
                     )
 
-                    # 💸 Budget Task
+                    
                     budget_task = Task(
                         description=f"""
                         Calculate total cost estimation for this {trip_duration}-day trip to {destination}.
@@ -238,7 +236,7 @@ if gemini_api_key:
                         context=[transport_task, stay_task, itinerary_task]
                     )
 
-                    # 🔄 Coordinator Task
+                  
                     coordinator_task = Task(
                         description=f"""
                         Merge all the outputs from transport, accommodation, itinerary, and budget agents into one clean, readable final travel plan.
@@ -255,14 +253,14 @@ if gemini_api_key:
                         context=[transport_task, stay_task, itinerary_task, budget_task]
                     )
 
-                    # Create and run crew
+                   
                     travel_crew = Crew(
                         agents=[transport_agent, stay_agent, itinerary_agent, budget_agent, coordinator_agent],
                         tasks=[transport_task, stay_task, itinerary_task, budget_task, coordinator_task],
                         verbose=False
                     )
 
-                    # Show agent progress
+                 
                     progress_placeholder = st.empty()
 
                     with progress_placeholder.container():
@@ -272,23 +270,23 @@ if gemini_api_key:
                         st.write("💸 BudgetAgent: Calculating costs...")
                         st.write("🔄 CoordinatorAgent: Merging everything...")
 
-                    # Execute the crew
+                   
                     result = travel_crew.kickoff()
 
-                    # Clear progress and show results
+                   
                     progress_placeholder.empty()
 
-                    # Display results
+                   
                     st.success("🎉 Multi-Agent Travel Plan Complete!")
                     st.markdown("---")
                     st.markdown("## 🗺️ Your Complete Multi-Agent Travel Plan")
                     st.markdown(str(result))
 
-                    # Create downloadable file
+                    
                     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"multi_agent_travel_plan_{destination.replace(' ', '_')}_{timestamp}.md"
 
-                    # Prepare download content
+                   
                     download_content = f"""# 🌍 Multi-Agent AI Travel Plan: {from_city} → {destination}
 
 **Generated by:** 5 Specialized AI Agents
@@ -312,7 +310,7 @@ if gemini_api_key:
 - 🔄 CoordinatorAgent: Final plan coordination
 """
 
-                    # Download button
+                    
                     st.download_button(
                         label="📥 Download Multi-Agent Travel Plan",
                         data=download_content,
@@ -333,7 +331,6 @@ else:
     st.error("❌ API Key not found!")
     st.info("Please make sure you have a .env file with GEMINI_API_KEY=your_key")
 
-    # Show architecture info
     st.markdown("### 🧠 Multi-Agent Architecture")
     st.markdown("""
     **🔄 CoordinatorAgent:** Merges outputs from all agents into clean, readable final plan
