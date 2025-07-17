@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
+os.environ["LITELLM_PROVIDER"] = "google"
 
 
 st.set_page_config(
