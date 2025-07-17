@@ -58,11 +58,11 @@ if gemini_api_key:
                 try:
                  
                     gemini_llm = LLM(
-                    model="gemini-1.5-pro",
+                    model="gemini/gemini-1.5-flash",  # Note the 'gemini/' prefix
                     api_key=gemini_api_key,
-                    temperature=0.3
+                    temperature=0.3,
+                    custom_llm_provider="gemini"  # Explicitly specify provider
                 )
-
 
                 
                     transport_agent = Agent(
