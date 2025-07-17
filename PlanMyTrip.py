@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-os.environ["LITELLM_PROVIDER"] = "google"
+
 
 
 st.set_page_config(
@@ -58,7 +58,6 @@ if gemini_api_key:
                 try:
                  
                     gemini_llm = LLM(
-                        provider="google",
                         model="gemini-2.0-flash-exp",  # Or "models/gemini-1.5-flash" if your key supports it
                         api_key=gemini_api_key,
                         temperature=0.3
