@@ -57,7 +57,8 @@ if gemini_api_key:
                 try:
                  
                     gemini_llm = LLM(
-                        model="gemini/gemini-2.0-flash-exp",
+                        provider="google",
+                        model="gemini-2.0-flash-exp",  # Or "models/gemini-1.5-flash" if your key supports it
                         api_key=gemini_api_key,
                         temperature=0.3
                     )
