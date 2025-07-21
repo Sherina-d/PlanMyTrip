@@ -1,4 +1,4 @@
 streamlit
-crewai
+crewai>=0.22.5
 python-dotenv
 google-generativeai
