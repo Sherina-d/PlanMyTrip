@@ -1,5 +1,6 @@
 streamlit
-crewai==0.28.10
+crewai
 python-dotenv
 google-generativeai
 pysqlite3-binary
+chromadb==0.4.14
