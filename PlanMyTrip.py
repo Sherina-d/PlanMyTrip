@@ -1,6 +1,7 @@
 
 import streamlit as st
 import os
+os.environ["CREWAI_DISABLE_CHROMA"] = "True"
 from crewai import Agent, Task, Crew, LLM
 import datetime
 from dotenv import load_dotenv
