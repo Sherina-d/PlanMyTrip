@@ -3,3 +3,4 @@ crewai
 python-dotenv
 google-generativeai
 pysqlite3-binary
+chromadb==0.4.15
