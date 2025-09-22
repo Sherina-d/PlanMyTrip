@@ -1,6 +1,7 @@
 streamlit
 python-dotenv
 requests
-crewai==0.22.5
+crewai
+crewai-tools
 google-generativeai
 pysqlite3-binary
