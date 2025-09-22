@@ -8,7 +8,12 @@ import streamlit as st
 from dotenv import load_dotenv
 import requests
 
-from crewai import Agent, Task, Crew, LLM, Tool
+# Updated import - Tool is now imported differently
+from crewai import Agent, Task, Crew, LLM
+from crewai_tools import tool  # This is the correct import for newer versions
+
+# Alternative import if above doesn't work:
+# from crewai.tools import BaseTool
 
 # -----------------------------
 # --- Load environment variables ---
@@ -29,10 +34,10 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 # -----------------------------
 # --- DuckDuckGo Search Tool ---
 # -----------------------------
-def duckduckgo_search(query):
+@tool("DuckDuckGo Search")
+def duckduckgo_search(query: str) -> str:
     """
-    Simple DuckDuckGo search API wrapper.
-    Returns top 3 search results titles + URLs
+    Retrieve real-time info about destinations, transport, attractions, or hotels
     """
     try:
         res = requests.get(
@@ -49,12 +54,6 @@ def duckduckgo_search(query):
         return "\n".join(results) if results else "No live info found."
     except Exception as e:
         return f"Error fetching live info: {str(e)}"
-
-duck_tool = Tool(
-    name="DuckDuckGo Search",
-    description="Retrieve real-time info about destinations, transport, attractions, or hotels",
-    func=duckduckgo_search
-)
 
 # -----------------------------
 # --- Main App Sidebar Inputs ---
@@ -74,14 +73,18 @@ if gemini_api_key:
         budget_type = st.selectbox("Budget Type", ["budget", "moderate", "luxury"])
 
     if start_date and end_date:
-        trip_duration = (end_date - start_date).days
-        st.info(f"Trip Duration: {trip_duration} days")
+        if end_date <= start_date:
+            st.error("⚠️ End date must be after start date!")
+        else:
+            trip_duration = (end_date - start_date).days
+            st.info(f"Trip Duration: {trip_duration} days")
 
     # -----------------------------
     # --- Generate Travel Plan ---
     # -----------------------------
     if st.button("🚀 Generate Multi-Agent Travel Plan", type="primary"):
-        if from_city and destination and interests and trip_duration > 0:
+        if from_city and destination and interests and start_date and end_date and end_date > start_date:
+            trip_duration = (end_date - start_date).days
             with st.spinner("🤖 Multi-Agent system is working..."):
                 try:
                     # -----------------------------
@@ -90,8 +93,7 @@ if gemini_api_key:
                     gemini_llm = LLM(
                         model="gemini/gemini-1.5-flash",
                         api_key=gemini_api_key,
-                        temperature=0.3,
-                        custom_llm_provider="gemini"
+                        temperature=0.3
                     )
 
                     # -----------------------------
@@ -102,7 +104,7 @@ if gemini_api_key:
                         goal=f"Find all transportation options from {from_city} to {destination} using real-time info",
                         backstory="Expert in all modes of transport with accurate cost and schedule info",
                         llm=gemini_llm,
-                        tools=[duck_tool],
+                        tools=[duckduckgo_search],  # Use the tool directly
                         verbose=False,
                         allow_delegation=False
                     )
@@ -112,7 +114,7 @@ if gemini_api_key:
                         goal=f"Find 5-6 accommodation options in {destination} for {budget_type} travelers using live search",
                         backstory="Hotel and accommodation expert with real-time pricing info",
                         llm=gemini_llm,
-                        tools=[duck_tool],
+                        tools=[duckduckgo_search],
                         verbose=False,
                         allow_delegation=False
                     )
@@ -122,7 +124,7 @@ if gemini_api_key:
                         goal=f"Create detailed day-wise itinerary for {trip_duration} days in {destination} with real-time info",
                         backstory="Planner who uses live info for attractions, timings, and schedules",
                         llm=gemini_llm,
-                        tools=[duck_tool],
+                        tools=[duckduckgo_search],
                         verbose=False,
                         allow_delegation=False
                     )
@@ -132,7 +134,7 @@ if gemini_api_key:
                         goal=f"Calculate total trip cost estimation for {budget_type} travel using live info",
                         backstory="Financial expert who uses live info to calculate transportation and accommodation costs",
                         llm=gemini_llm,
-                        tools=[duck_tool],
+                        tools=[duckduckgo_search],
                         verbose=False,
                         allow_delegation=False
                     )
@@ -210,7 +212,6 @@ if gemini_api_key:
                         agent=stay_agent
                     )
 
-
                     itinerary_task = Task(
                         description=f"""
                         Create a {trip_duration}-day detailed itinerary for {destination}.
@@ -235,7 +236,6 @@ if gemini_api_key:
                         agent=itinerary_agent
                     )
 
-                    
                     budget_task = Task(
                         description=f"""
                         Calculate total cost estimation for this {trip_duration}-day trip to {destination}.
@@ -272,7 +272,6 @@ if gemini_api_key:
                         context=[transport_task, stay_task, itinerary_task]
                     )
 
-                  
                     coordinator_task = Task(
                         description=f"""
                         Merge all the outputs from transport, accommodation, itinerary, and budget agents into one clean, readable final travel plan.
@@ -289,14 +288,12 @@ if gemini_api_key:
                         context=[transport_task, stay_task, itinerary_task, budget_task]
                     )
 
-                   
                     travel_crew = Crew(
                         agents=[transport_agent, stay_agent, itinerary_agent, budget_agent, coordinator_agent],
                         tasks=[transport_task, stay_task, itinerary_task, budget_task, coordinator_task],
                         verbose=False
                     )
 
-                 
                     progress_placeholder = st.empty()
 
                     with progress_placeholder.container():
@@ -306,23 +303,18 @@ if gemini_api_key:
                         st.write("💸 BudgetAgent: Calculating costs...")
                         st.write("🔄 CoordinatorAgent: Merging everything...")
 
-                   
                     result = travel_crew.kickoff()
 
-                   
                     progress_placeholder.empty()
 
-                   
                     st.success("🎉 Multi-Agent Travel Plan Complete!")
                     st.markdown("---")
                     st.markdown("## 🗺️ Your Complete Multi-Agent Travel Plan")
                     st.markdown(str(result))
 
-                    
                     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"multi_agent_travel_plan_{destination.replace(' ', '_')}_{timestamp}.md"
 
-                   
                     download_content = f"""# 🌍 Multi-Agent AI Travel Plan: {from_city} → {destination}
 
 **Generated by:** 5 Specialized AI Agents
@@ -346,7 +338,6 @@ if gemini_api_key:
 - 🔄 CoordinatorAgent: Final plan coordination
 """
 
-                    
                     st.download_button(
                         label="📥 Download Multi-Agent Travel Plan",
                         data=download_content,
@@ -379,4 +370,3 @@ else:
 
     **💸 BudgetTrackerAgent:** Estimates overall trip cost based on stay type, transport, meals, etc.
     """)
-
