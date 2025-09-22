@@ -3,15 +3,17 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import os
-import streamlit as st
-from crewai import Agent, Task, Crew, LLM
 import datetime
+import streamlit as st
 from dotenv import load_dotenv
+import requests
 
+from crewai import Agent, Task, Crew, LLM, Tool
 
+# -----------------------------
+# --- Load environment variables ---
+# -----------------------------
 load_dotenv()
-
-
 
 st.set_page_config(
     page_title="🌍 PlanMyTrip",
@@ -19,102 +21,130 @@ st.set_page_config(
     layout="wide"
 )
 
-
 st.title("🌍 PlanMyTrip")
 st.markdown("**🧠 Powered by AI Agents**")
 
-
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
+# -----------------------------
+# --- DuckDuckGo Search Tool ---
+# -----------------------------
+def duckduckgo_search(query):
+    """
+    Simple DuckDuckGo search API wrapper.
+    Returns top 3 search results titles + URLs
+    """
+    try:
+        res = requests.get(
+            "https://api.duckduckgo.com/",
+            params={"q": query, "format": "json", "no_html": 1, "skip_disambig": 1},
+            timeout=5
+        )
+        data = res.json()
+        results = []
+        if "RelatedTopics" in data:
+            for item in data["RelatedTopics"][:3]:
+                if "Text" in item and "FirstURL" in item:
+                    results.append(f"{item['Text']} - {item['FirstURL']}")
+        return "\n".join(results) if results else "No live info found."
+    except Exception as e:
+        return f"Error fetching live info: {str(e)}"
+
+duck_tool = Tool(
+    name="DuckDuckGo Search",
+    description="Retrieve real-time info about destinations, transport, attractions, or hotels",
+    func=duckduckgo_search
+)
+
+# -----------------------------
+# --- Main App Sidebar Inputs ---
+# -----------------------------
 if gemini_api_key:
     st.sidebar.success("✅ API Key loaded from environment!")
 
     st.markdown("### 📋 Trip Details")
-
     col1, col2 = st.columns(2)
-
     with col1:
         from_city = st.text_input("From City", placeholder="Chennai")
         destination = st.text_input("Destination", placeholder="Goa")
         interests = st.text_input("Interests", placeholder="beaches, nightlife, food")
-
     with col2:
         start_date = st.date_input("Start Date")
         end_date = st.date_input("End Date")
         budget_type = st.selectbox("Budget Type", ["budget", "moderate", "luxury"])
 
-   
     if start_date and end_date:
         trip_duration = (end_date - start_date).days
         st.info(f"Trip Duration: {trip_duration} days")
 
-  
+    # -----------------------------
+    # --- Generate Travel Plan ---
+    # -----------------------------
     if st.button("🚀 Generate Multi-Agent Travel Plan", type="primary"):
         if from_city and destination and interests and trip_duration > 0:
-
-           
             with st.spinner("🤖 Multi-Agent system is working..."):
-
                 try:
-                 
+                    # -----------------------------
+                    # --- Gemini LLM Setup ---
+                    # -----------------------------
                     gemini_llm = LLM(
-                    model="gemini/gemini-1.5-flash",  # Note the 'gemini/' prefix
-                    api_key=gemini_api_key,
-                    temperature=0.3,
-                    custom_llm_provider="gemini"  # Explicitly specify provider
-                )
+                        model="gemini/gemini-1.5-flash",
+                        api_key=gemini_api_key,
+                        temperature=0.3,
+                        custom_llm_provider="gemini"
+                    )
 
-                
+                    # -----------------------------
+                    # --- Agents with Tools ---
+                    # -----------------------------
                     transport_agent = Agent(
                         role="Transportation Specialist",
-                        goal=f"Find all transportation options from {from_city} to {destination}",
-                        backstory="Expert in finding the best transportation modes including buses, trains, flights, and local transport options.",
+                        goal=f"Find all transportation options from {from_city} to {destination} using real-time info",
+                        backstory="Expert in all modes of transport with accurate cost and schedule info",
                         llm=gemini_llm,
+                        tools=[duck_tool],
                         verbose=False,
                         allow_delegation=False
                     )
 
-                 
                     stay_agent = Agent(
                         role="Accommodation Specialist",
-                        goal=f"Find 5-6 accommodation options in {destination} for {budget_type} travelers",
-                        backstory="Hotel and accommodation expert who knows the best stays with detailed pros/cons analysis.",
+                        goal=f"Find 5-6 accommodation options in {destination} for {budget_type} travelers using live search",
+                        backstory="Hotel and accommodation expert with real-time pricing info",
                         llm=gemini_llm,
+                        tools=[duck_tool],
                         verbose=False,
                         allow_delegation=False
                     )
 
-                  
                     itinerary_agent = Agent(
-                        role="Itinerary Planning Specialist", 
-                        goal=f"Create detailed day-wise itinerary for {trip_duration} days in {destination}",
-                        backstory="Master itinerary planner who creates time-slot based daily schedules with activities matching traveler interests.",
+                        role="Itinerary Planning Specialist",
+                        goal=f"Create detailed day-wise itinerary for {trip_duration} days in {destination} with real-time info",
+                        backstory="Planner who uses live info for attractions, timings, and schedules",
                         llm=gemini_llm,
+                        tools=[duck_tool],
                         verbose=False,
                         allow_delegation=False
                     )
 
-                    
                     budget_agent = Agent(
                         role="Budget Analysis Specialist",
-                        goal=f"Calculate total trip cost estimation for {budget_type} travel",
-                        backstory="Financial expert who accurately estimates travel costs including transport, accommodation, meals, and activities.",
+                        goal=f"Calculate total trip cost estimation for {budget_type} travel using live info",
+                        backstory="Financial expert who uses live info to calculate transportation and accommodation costs",
                         llm=gemini_llm,
+                        tools=[duck_tool],
                         verbose=False,
                         allow_delegation=False
                     )
 
-                   
                     coordinator_agent = Agent(
                         role="Travel Plan Coordinator",
                         goal="Merge all agent outputs into one clean, readable final travel plan",
-                        backstory="Master coordinator who combines all travel information into a comprehensive, well-organized final plan.",
+                        backstory="Master coordinator combining all travel info into a comprehensive plan",
                         llm=gemini_llm,
                         verbose=False,
                         allow_delegation=False
                     )
-
-                
 
                     transport_task = Task(
                         description=f"""
@@ -349,3 +379,4 @@ else:
 
     **💸 BudgetTrackerAgent:** Estimates overall trip cost based on stay type, transport, meals, etc.
     """)
+
