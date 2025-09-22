@@ -8,9 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 import requests
 
-# Updated import - Tool is now imported differently
-from crewai import Agent, Task, Crew, LLM
-from crewai_tools import Tool  # This is the correct import for newer versions
+from crewai import Agent, Task, Crew, LLM, tool
 
 # Alternative import if above doesn't work:
 # from crewai.tools import BaseTool
@@ -370,4 +368,5 @@ else:
 
     **💸 BudgetTrackerAgent:** Estimates overall trip cost based on stay type, transport, meals, etc.
     """)
+
 
